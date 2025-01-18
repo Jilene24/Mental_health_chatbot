@@ -4,11 +4,7 @@ from transformers import AutoTokenizer
 from torch.utils.data import DataLoader, Dataset
 import torch
 from Bert_Finetuning import BertModel
-
-def preprocess_text(text):
-    # Implement your text preprocessing logic here
-    return text  # Example, replace with actual preprocessing
-
+from data_preprocessing import preprocess_text
 def main():
     # Load your dataset
     filepath = 'C:/Users/Jilen/PycharmProjects/Mental_health_chatbot/dataset/data.csv'
