@@ -5,6 +5,7 @@ from torch.utils.data import DataLoader, Dataset
 import torch
 from Bert_Finetuning import BertModel
 from data_preprocessing import preprocess_text
+from GenAI import generate_response
 def main():
     # Load your dataset
     filepath = 'C:/Users/Jilen/PycharmProjects/Mental_health_chatbot/dataset/data.csv'

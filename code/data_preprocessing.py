@@ -8,7 +8,6 @@ from textblob import TextBlob
 import contractions
 import string
 
-# Download required NLTK data
 nltk.download('punkt')
 nltk.download('stopwords')
 
