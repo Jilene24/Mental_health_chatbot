@@ -1,6 +1,6 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
-from transformers import AutoModelForSequenceClassification, AdamW
+from transformers import AutoModelForSequenceClassification, AutoTokenizer, AdamW
 
 class BertModel:
     def __init__(self, model_name="mental/mental-bert-base", num_labels=5):
@@ -8,78 +8,60 @@ class BertModel:
         self.optimizer = AdamW(self.model.parameters(), lr=5e-5)
         self.loss_fn = torch.nn.CrossEntropyLoss()
 
-    def train(self, train_loader):
+    def fine_tune(self, train_loader, epochs=3):
+
         self.model.train()
         total_loss = 0
-        for batch in train_loader:
-            input_ids = batch['input_ids']
-            attention_mask = batch['attention_mask']
-            labels = batch['label']
+        for epoch in range(epochs):
+            for batch in train_loader:
+                input_ids = batch['input_ids']
+                attention_mask = batch['attention_mask']
+                labels = batch['labels']
 
-            self.optimizer.zero_grad()
+                self.optimizer.zero_grad()
 
-            outputs = self.model(input_ids, attention_mask=attention_mask, labels=labels)
-            loss = outputs.loss
-            total_loss += loss.item()
+                # Forward pass
+                outputs = self.model(input_ids, attention_mask=attention_mask, labels=labels)
+                loss = outputs.loss
+                total_loss += loss.item()
 
-            loss.backward()
-            self.optimizer.step()
-        return total_loss
+                # Backward pass and optimization
+                loss.backward()
+                self.optimizer.step()
 
-    def evaluate(self, test_loader):
+            print(f"Epoch {epoch + 1}/{epochs}, Loss: {total_loss}")
+
+    def evaluate(self, val_loader):
+
         self.model.eval()
         total_correct = 0
         total_samples = 0
         with torch.no_grad():
-            for batch in test_loader:
+            for batch in val_loader:
                 input_ids = batch['input_ids']
                 attention_mask = batch['attention_mask']
-                labels = batch['label']
+                labels = batch['labels']
 
                 outputs = self.model(input_ids, attention_mask=attention_mask)
                 logits = outputs.logits
 
+                # Prediction and accuracy calculation
                 _, predicted = torch.max(logits, dim=1)
                 total_correct += (predicted == labels).sum().item()
                 total_samples += labels.size(0)
+
         accuracy = total_correct / total_samples
         return accuracy
 
-    def fit(self, train_encodings, train_labels, batch_size=8, epochs=3):
+    def save_model(self, save_path="bert_model.pth"):
 
-        train_labels = torch.tensor(train_labels)
+        torch.save(self.model.state_dict(), save_path)
+        print(f"Model saved to {save_path}")
 
-        class CustomDataset(Dataset):
-            def __init__(self, encodings, labels):
-                self.encodings = encodings
-                self.labels = labels
+    def load_model(self, model_path="bert_model.pth"):
 
-            def __len__(self):
-                return len(self.labels)
-
-            def __getitem__(self, idx):
-                return {key: torch.tensor(val[idx]) for key, val in self.encodings[idx].items()}, self.labels[idx]
-
-        train_dataset = CustomDataset(train_encodings, train_labels)
-        train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
-
-        for epoch in range(epochs):
-            train_loss = self.train(train_loader)
-            print(f"Epoch {epoch + 1}/{epochs}, Loss: {train_loss}")
-
-    def predict(self, val_encodings):
-        self.model.eval()
-
-        input_ids = torch.tensor([encoding['input_ids'] for encoding in val_encodings])
-        attention_mask = torch.tensor([encoding['attention_mask'] for encoding in val_encodings])
-
-        with torch.no_grad():
-            outputs = self.model(input_ids, attention_mask=attention_mask)
-            logits = outputs.logits
-            predicted = torch.argmax(logits, dim=1)
-            torch.save(self.model.state_dict(), "bert_model.pth")
-
-        return predicted
+        self.model.load_state_dict(torch.load(model_path))
+        print(f"Model loaded from {model_path}")
 
 
 
